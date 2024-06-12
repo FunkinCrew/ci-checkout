@@ -2013,8 +2013,12 @@ function getCheckoutInfo(git, ref, commit) {
             result.ref = `refs/remotes/pull/${branch}`;
         }
         // refs/tags/
-        else if (upperRef.startsWith('REFS/')) {
+        else if (upperRef.startsWith('REFS/TAGS/')) {
             result.ref = ref;
+        }
+        // refs/
+        else if (upperRef.startsWith('REFS/') && commit) {
+            result.ref = commit;
         }
         // Unqualified ref, check for a matching branch or tag
         else {
