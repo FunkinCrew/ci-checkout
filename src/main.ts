@@ -25,7 +25,7 @@ async function run(): Promise<void> {
       coreCommand.issueCommand('remove-matcher', {owner: 'checkout-git'}, '')
     }
   } catch (error) {
-    core.setFailed(`${(error as any)?.message ?? error}`)
+    core.setFailed(`${(error as Error)?.message ?? error}`)
   }
 }
 
@@ -33,15 +33,15 @@ async function cleanup(): Promise<void> {
   try {
     await gitSourceProvider.cleanup(stateHelper.RepositoryPath)
   } catch (error) {
-    core.warning(`${(error as any)?.message ?? error}`)
+    core.warning(`${(error as Error)?.message ?? error}`)
   }
 }
 
 // Main
 if (!stateHelper.IsPost) {
-  run()
+  void run()
 }
 // Post
 else {
-  cleanup()
+  void cleanup()
 }
