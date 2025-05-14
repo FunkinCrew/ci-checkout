@@ -153,11 +153,11 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
     if (settings.submoduleAliases.length > 0) {
       core.startGroup('Setting up submodule aliases')
       for (const [src, dst] of settings.submoduleAliases) {
-        const enable = async (): Promise<void> => git.config(key, src)
+        const enable = async (): Promise<void> => git.config(key, src, true)
         const key = submodAliasKey(dst)
 
-        if (await git.configExists(key)) {
-          const success = await git.tryConfigUnset(key)
+        if (await git.configExists(key, true)) {
+          const success = await git.tryConfigUnset(key, true)
           if (success) await enable()
           else
             core.error(
@@ -365,7 +365,7 @@ export async function cleanup(
   if (submoduleAliases.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const key of submoduleAliases.map(([_, dst]) => submodAliasKey(dst))) {
-      await git.tryConfigUnset(key)
+      await git.tryConfigUnset(key, true)
     }
   }
 }
