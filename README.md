@@ -120,6 +120,12 @@ Please refer to the [release page](https://github.com/actions/checkout/releases/
     # Default: false
     submodules: ''
 
+    # Submodule URLs to be replaced by a different one, e.g. for injecting
+    # authorization, or different public/private submodules.
+    # Syntax is old_url > new_url, delimited by newlines
+    # Example: https://git.example/~user/repo.git > user@git.example:secret-repo.git
+    submodule-aliases: ''
+
     # Add repository path as safe.directory for Git global config by running `git
     # config --global --add safe.directory <path>`
     # Default: true

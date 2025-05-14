@@ -1322,6 +1322,24 @@ function getSource(settings) {
                 }
                 core.endGroup();
             }
+            // Set up submodule URL aliases
+            if (settings.submoduleAliases.length > 0) {
+                core.startGroup('Setting up submodule aliases');
+                for (const [src, dst] of settings.submoduleAliases) {
+                    const enable = () => __awaiter(this, void 0, void 0, function* () { return git.config(key, src); });
+                    const key = submodAliasKey(dst);
+                    if (yield git.configExists(key)) {
+                        const success = yield git.tryConfigUnset(key);
+                        if (success)
+                            yield enable();
+                        else
+                            core.error(`Key ${key} exists but couldn't be removed, skipping alias ${src} -> ${dst}`);
+                    }
+                    else
+                        yield enable();
+                }
+                core.endGroup();
+            }
             // LFS install
             if (settings.lfs) {
                 yield git.lfsInstall();
@@ -1368,7 +1386,7 @@ function getSource(settings) {
             }
             // Sparse checkout
             if (!settings.sparseCheckout) {
-                let gitVersion = yield git.version();
+                const gitVersion = yield git.version();
                 // no need to disable sparse-checkout if the installed git runtime doesn't even support it.
                 if (gitVersion.checkMinimum(git_command_manager_1.MinimumGitSparseCheckoutVersion)) {
                     yield git.disableSparseCheckout();
@@ -1427,12 +1445,12 @@ function getSource(settings) {
                     yield authHelper.removeAuth();
                     core.endGroup();
                 }
-                authHelper.removeGlobalConfig();
+                yield authHelper.removeGlobalConfig();
             }
         }
     });
 }
-function cleanup(repositoryPath) {
+function cleanup(settings, repositoryPath) {
     return __awaiter(this, void 0, void 0, function* () {
         // Repo exists?
         if (!repositoryPath ||
@@ -1465,6 +1483,14 @@ function cleanup(repositoryPath) {
         finally {
             yield authHelper.removeGlobalConfig();
         }
+        // Remove submodule URL aliases
+        const { submoduleAliases } = settings;
+        if (submoduleAliases.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            for (const key of submoduleAliases.map(([_, dst]) => submodAliasKey(dst))) {
+                yield git.tryConfigUnset(key);
+            }
+        }
     });
 }
 function getGitCommandManager(settings) {
@@ -1483,6 +1509,7 @@ function getGitCommandManager(settings) {
         }
     });
 }
+const submodAliasKey = (dstUrl) => `url.${dstUrl}.insteadOf`;
 
 
 /***/ }),
@@ -1848,7 +1875,10 @@ function getInputs() {
         result.clean = (core.getInput('clean') || 'true').toUpperCase() === 'TRUE';
         core.debug(`clean = ${result.clean}`);
         // Clean
-        result.cleanSubmodules = (core.getInput('clean-submodules') || core.getInput('clean') || 'true').toUpperCase() === 'TRUE';
+        result.cleanSubmodules =
+            (core.getInput('clean-submodules') ||
+                core.getInput('clean') ||
+                'true').toUpperCase() === 'TRUE';
         core.debug(`clean-submodules = ${result.clean}`);
         // Filter
         const filter = core.getInput('filter');
@@ -1886,11 +1916,11 @@ function getInputs() {
         result.submodules = false;
         result.nestedSubmodules = false;
         const submodulesString = (core.getInput('submodules') || '').toUpperCase();
-        if (submodulesString == 'RECURSIVE') {
+        if (submodulesString === 'RECURSIVE') {
             result.submodules = true;
             result.nestedSubmodules = true;
         }
-        else if (submodulesString == 'TRUE') {
+        else if (submodulesString === 'TRUE') {
             result.submodules = true;
         }
         core.debug(`submodules = ${result.submodules}`);
@@ -1915,8 +1945,32 @@ function getInputs() {
         // Determine the GitHub URL that the repository is being hosted from
         result.githubServerUrl = core.getInput('github-server-url');
         core.debug(`GitHub Host URL = ${result.githubServerUrl}`);
+        core.startGroup('parsing submodule alias config');
+        result.submoduleAliases = parseSubmoduleAliases();
+        core.endGroup();
         return result;
     });
+}
+function parseSubmoduleAliases() {
+    var _a;
+    const SEPERATOR = /\s*>\s*/;
+    const input = core.getInput('submodule-aliases');
+    core.debug(`input = ${input}`);
+    if (!input)
+        return [];
+    try {
+        const lines = input.split('\n').filter(l => l.length > 0);
+        core.debug(`pre-filter = ${lines}`);
+        const filtered = lines.filter(l => SEPERATOR.test(l));
+        core.debug(`post-filter = ${filtered}`);
+        const output = filtered.map(l => l.split(SEPERATOR));
+        core.debug(`parsed = [ ${output.map(([k, v]) => `${k} -> ${v}`).join(' | ')} ]`);
+        return output;
+    }
+    catch (e) {
+        core.error((_a = e === null || e === void 0 ? void 0 : e.message) !== null && _a !== void 0 ? _a : e);
+        return [];
+    }
 }
 
 
@@ -1976,11 +2030,10 @@ const gitSourceProvider = __importStar(__nccwpck_require__(1436));
 const inputHelper = __importStar(__nccwpck_require__(5285));
 const path = __importStar(__nccwpck_require__(6928));
 const stateHelper = __importStar(__nccwpck_require__(590));
-function run() {
+function run(sourceSettings) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
         try {
-            const sourceSettings = yield inputHelper.getInputs();
             try {
                 // Register problem matcher
                 coreCommand.issueCommand('add-matcher', {}, path.join(__dirname, 'problem-matcher.json'));
@@ -1998,25 +2051,29 @@ function run() {
         }
     });
 }
-function cleanup() {
+function cleanup(sourceSettings) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
         try {
-            yield gitSourceProvider.cleanup(stateHelper.RepositoryPath);
+            yield gitSourceProvider.cleanup(sourceSettings, stateHelper.RepositoryPath);
         }
         catch (error) {
             core.warning(`${(_a = error === null || error === void 0 ? void 0 : error.message) !== null && _a !== void 0 ? _a : error}`);
         }
     });
 }
-// Main
-if (!stateHelper.IsPost) {
-    run();
-}
-// Post
-else {
-    cleanup();
-}
+const main = () => __awaiter(void 0, void 0, void 0, function* () {
+    const sourceSettings = yield inputHelper.getInputs();
+    // Actual action run
+    if (!stateHelper.IsPost) {
+        void run(sourceSettings);
+    }
+    // Post-action cleanup
+    else {
+        void cleanup(sourceSettings);
+    }
+});
+void main();
 
 
 /***/ }),
