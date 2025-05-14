@@ -165,5 +165,25 @@ export async function getInputs(): Promise<IGitSourceSettings> {
   result.githubServerUrl = core.getInput('github-server-url')
   core.debug(`GitHub Host URL = ${result.githubServerUrl}`)
 
+  result.submoduleAliases = parseSubmoduleAliases(
+    core.getInput('submodule-aliases')
+  )
+
   return result
+}
+
+function parseSubmoduleAliases(input: string): [string, string][] {
+  const SEPERATOR = /\s*>\s*/
+
+  if (!input) return []
+
+  try {
+    return input
+      .split('\n')
+      .filter(line => line.length > 0 && line.match(SEPERATOR) !== null)
+      .map(line => line.split(SEPERATOR, 2) as [string, string])
+  } catch (e) {
+    core.error((e as Error)?.message ?? e)
+    return []
+  }
 }

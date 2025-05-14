@@ -4,11 +4,10 @@ import * as gitSourceProvider from './git-source-provider'
 import * as inputHelper from './input-helper'
 import * as path from 'path'
 import * as stateHelper from './state-helper'
+import type {IGitSourceSettings} from './git-source-settings'
 
-async function run(): Promise<void> {
+async function run(sourceSettings: IGitSourceSettings): Promise<void> {
   try {
-    const sourceSettings = await inputHelper.getInputs()
-
     try {
       // Register problem matcher
       coreCommand.issueCommand(
@@ -29,19 +28,25 @@ async function run(): Promise<void> {
   }
 }
 
-async function cleanup(): Promise<void> {
+async function cleanup(sourceSettings: IGitSourceSettings): Promise<void> {
   try {
-    await gitSourceProvider.cleanup(stateHelper.RepositoryPath)
+    await gitSourceProvider.cleanup(sourceSettings, stateHelper.RepositoryPath)
   } catch (error) {
     core.warning(`${(error as Error)?.message ?? error}`)
   }
 }
 
-// Main
-if (!stateHelper.IsPost) {
-  void run()
+const main = async (): Promise<void> => {
+  const sourceSettings = await inputHelper.getInputs()
+
+  // Actual action run
+  if (!stateHelper.IsPost) {
+    void run(sourceSettings)
+  }
+  // Post-action cleanup
+  else {
+    void cleanup(sourceSettings)
+  }
 }
-// Post
-else {
-  void cleanup()
-}
+
+void main()

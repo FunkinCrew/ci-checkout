@@ -149,6 +149,25 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
       core.endGroup()
     }
 
+    // Set up submodule URL aliases
+    if (settings.submoduleAliases.length > 0) {
+      core.startGroup('Setting up submodule aliases')
+      for (const [src, dst] of settings.submoduleAliases) {
+        const enable = async (): Promise<void> => git.config(key, src)
+        const key = submodAliasKey(dst)
+
+        if (await git.configExists(key)) {
+          const success = await git.tryConfigUnset(key)
+          if (success) await enable()
+          else
+            core.error(
+              `Key ${key} exists but couldn't be removed, skipping alias ${src} -> ${dst}`
+            )
+        } else await enable()
+      }
+      core.endGroup()
+    }
+
     // LFS install
     if (settings.lfs) {
       await git.lfsInstall()
@@ -212,7 +231,7 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
 
     // Sparse checkout
     if (!settings.sparseCheckout) {
-      let gitVersion = await git.version()
+      const gitVersion = await git.version()
       // no need to disable sparse-checkout if the installed git runtime doesn't even support it.
       if (gitVersion.checkMinimum(MinimumGitSparseCheckoutVersion)) {
         await git.disableSparseCheckout()
@@ -241,7 +260,10 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
 
       if (settings.cleanSubmodules) {
         core.info('Cleaning the repository again before fetching submodules')
-        await gitDirectoryHelper.cleanExistingDirectory(git, settings.repositoryPath)
+        await gitDirectoryHelper.cleanExistingDirectory(
+          git,
+          settings.repositoryPath
+        )
       }
 
       // Checkout submodules
@@ -287,12 +309,15 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
         await authHelper.removeAuth()
         core.endGroup()
       }
-      authHelper.removeGlobalConfig()
+      await authHelper.removeGlobalConfig()
     }
   }
 }
 
-export async function cleanup(repositoryPath: string): Promise<void> {
+export async function cleanup(
+  settings: IGitSourceSettings,
+  repositoryPath: string
+): Promise<void> {
   // Repo exists?
   if (
     !repositoryPath ||
@@ -334,6 +359,15 @@ export async function cleanup(repositoryPath: string): Promise<void> {
   } finally {
     await authHelper.removeGlobalConfig()
   }
+
+  // Remove submodule URL aliases
+  const {submoduleAliases} = settings
+  if (submoduleAliases.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for (const key of submoduleAliases.map(([_, dst]) => submodAliasKey(dst))) {
+      await git.tryConfigUnset(key)
+    }
+  }
 }
 
 async function getGitCommandManager(
@@ -356,3 +390,5 @@ async function getGitCommandManager(
     return undefined
   }
 }
+
+const submodAliasKey = (dstUrl: string): string => `url.${dstUrl}.insteadOf`

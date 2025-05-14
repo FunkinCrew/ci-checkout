@@ -123,4 +123,9 @@ export interface IGitSourceSettings {
    * User override on the GitHub Server/Host URL that hosts the repository to be cloned
    */
   githubServerUrl: string | undefined
+
+  /**
+   * List of submodules to update the URLs of
+   */
+  submoduleAliases: [string, string][]
 }
