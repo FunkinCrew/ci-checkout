@@ -9,7 +9,8 @@ export async function getInputs(): Promise<IGitSourceSettings> {
   const result = {} as unknown as IGitSourceSettings
 
   // Working directory
-  let workingDirectory = core.getInput('working-directory') || process.env['GITHUB_WORKSPACE']
+  let workingDirectory =
+    core.getInput('working-directory') || process.env['GITHUB_WORKSPACE']
   if (!workingDirectory) {
     throw new Error('working dir not defined')
   }
@@ -37,15 +38,8 @@ export async function getInputs(): Promise<IGitSourceSettings> {
 
   // Repository path
   result.repositoryPath = core.getInput('path') || '.'
-  result.repositoryPath = path.resolve(
-    workingDirectory,
-    result.repositoryPath
-  )
-  if (
-    !(result.repositoryPath + path.sep).startsWith(
-      workingDirectory
-    )
-  ) {
+  result.repositoryPath = path.resolve(workingDirectory, result.repositoryPath)
+  if (!(result.repositoryPath + path.sep).startsWith(workingDirectory)) {
     throw new Error(
       `Repository path '${result.repositoryPath + path.sep}' is not under '${workingDirectory}'`
     )
@@ -83,7 +77,12 @@ export async function getInputs(): Promise<IGitSourceSettings> {
   core.debug(`clean = ${result.clean}`)
 
   // Clean
-  result.cleanSubmodules = (core.getInput('clean-submodules') || core.getInput('clean') || 'true').toUpperCase() === 'TRUE'
+  result.cleanSubmodules =
+    (
+      core.getInput('clean-submodules') ||
+      core.getInput('clean') ||
+      'true'
+    ).toUpperCase() === 'TRUE'
   core.debug(`clean-submodules = ${result.clean}`)
 
   // Filter
@@ -130,10 +129,10 @@ export async function getInputs(): Promise<IGitSourceSettings> {
   result.submodules = false
   result.nestedSubmodules = false
   const submodulesString = (core.getInput('submodules') || '').toUpperCase()
-  if (submodulesString == 'RECURSIVE') {
+  if (submodulesString === 'RECURSIVE') {
     result.submodules = true
     result.nestedSubmodules = true
-  } else if (submodulesString == 'TRUE') {
+  } else if (submodulesString === 'TRUE') {
     result.submodules = true
   }
   core.debug(`submodules = ${result.submodules}`)
