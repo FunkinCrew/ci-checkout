@@ -164,7 +164,7 @@ export async function getInputs(): Promise<IGitSourceSettings> {
   result.githubServerUrl = core.getInput('github-server-url')
   core.debug(`GitHub Host URL = ${result.githubServerUrl}`)
 
-  core.startGroup('parsing submodule alias config')
+  core.startGroup('Parsing submodule alias config')
   result.submoduleAliases = parseSubmoduleAliases()
   core.endGroup()
 
@@ -185,9 +185,7 @@ function parseSubmoduleAliases(): [string, string][] {
     const filtered = lines.filter(l => SEPERATOR.test(l))
     core.debug(`post-filter = ${filtered}`)
     const output = filtered.map(l => l.split(SEPERATOR) as [string, string])
-    core.debug(
-      `parsed = [ ${output.map(([k, v]) => `${k} -> ${v}`).join(' | ')} ]`
-    )
+    core.info(`[ ${output.map(([k, v]) => `${k} -> ${v}`).join(' | ')} ]`)
     return output
   } catch (e) {
     core.error((e as Error)?.message ?? e)
