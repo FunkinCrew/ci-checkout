@@ -164,23 +164,31 @@ export async function getInputs(): Promise<IGitSourceSettings> {
   result.githubServerUrl = core.getInput('github-server-url')
   core.debug(`GitHub Host URL = ${result.githubServerUrl}`)
 
-  result.submoduleAliases = parseSubmoduleAliases(
-    core.getInput('submodule-aliases')
-  )
+  core.startGroup('parsing submodule alias config')
+  result.submoduleAliases = parseSubmoduleAliases()
+  core.endGroup()
 
   return result
 }
 
-function parseSubmoduleAliases(input: string): [string, string][] {
+function parseSubmoduleAliases(): [string, string][] {
   const SEPERATOR = /\s*>\s*/
+  const input = core.getInput('submodule-aliases')
+
+  core.debug(`input = ${input}`)
 
   if (!input) return []
 
   try {
-    return input
-      .split('\n')
-      .filter(line => line.length > 0 && line.match(SEPERATOR) !== null)
-      .map(line => line.split(SEPERATOR, 2) as [string, string])
+    const lines = input.split('\n').filter(l => l.length > 0)
+    core.debug(`pre-filter = ${lines}`)
+    const filtered = lines.filter(l => SEPERATOR.test(l))
+    core.debug(`post-filter = ${filtered}`)
+    const output = filtered.map(l => l.split(SEPERATOR) as [string, string])
+    core.debug(
+      `parsed = [ ${output.map(([k, v]) => `${k} -> ${v}`).join(' | ')} ]`
+    )
+    return output
   } catch (e) {
     core.error((e as Error)?.message ?? e)
     return []
