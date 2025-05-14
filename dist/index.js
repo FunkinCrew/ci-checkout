@@ -1945,7 +1945,7 @@ function getInputs() {
         // Determine the GitHub URL that the repository is being hosted from
         result.githubServerUrl = core.getInput('github-server-url');
         core.debug(`GitHub Host URL = ${result.githubServerUrl}`);
-        core.startGroup('parsing submodule alias config');
+        core.startGroup('Parsing submodule alias config');
         result.submoduleAliases = parseSubmoduleAliases();
         core.endGroup();
         return result;
@@ -1964,7 +1964,7 @@ function parseSubmoduleAliases() {
         const filtered = lines.filter(l => SEPERATOR.test(l));
         core.debug(`post-filter = ${filtered}`);
         const output = filtered.map(l => l.split(SEPERATOR));
-        core.debug(`parsed = [ ${output.map(([k, v]) => `${k} -> ${v}`).join(' | ')} ]`);
+        core.info(`[ ${output.map(([k, v]) => `${k} -> ${v}`).join(' | ')} ]`);
         return output;
     }
     catch (e) {
