@@ -1326,10 +1326,10 @@ function getSource(settings) {
             if (settings.submoduleAliases.length > 0) {
                 core.startGroup('Setting up submodule aliases');
                 for (const [src, dst] of settings.submoduleAliases) {
-                    const enable = () => __awaiter(this, void 0, void 0, function* () { return git.config(key, src); });
+                    const enable = () => __awaiter(this, void 0, void 0, function* () { return git.config(key, src, true); });
                     const key = submodAliasKey(dst);
-                    if (yield git.configExists(key)) {
-                        const success = yield git.tryConfigUnset(key);
+                    if (yield git.configExists(key, true)) {
+                        const success = yield git.tryConfigUnset(key, true);
                         if (success)
                             yield enable();
                         else
@@ -1488,7 +1488,7 @@ function cleanup(settings, repositoryPath) {
         if (submoduleAliases.length > 0) {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             for (const key of submoduleAliases.map(([_, dst]) => submodAliasKey(dst))) {
-                yield git.tryConfigUnset(key);
+                yield git.tryConfigUnset(key, true);
             }
         }
     });
